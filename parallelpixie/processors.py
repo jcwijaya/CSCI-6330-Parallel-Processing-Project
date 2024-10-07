@@ -19,17 +19,13 @@ def validate_data(columns, data):
         if col not in data.columns:
             raise Exception(col + ' is not a valid column name')
 
-#TODO: Methods for deleting rows you don't want. Will need to have a way to input what col values are undesirable
-# and also speed it up with parallelism
-#input: data,
+# TODO: for each chunk of data will check if specified cols have undesired value and delete rows that have it and also speed it up with parallelism
 def clean_rows(value, data, columns=None):
-    #TODO: for each chunk of data will check if specified cols have undesired value and delete rows that have it
     pass
 
 #Method for transforming data of a column, will make use of parallelism
 #Can iterate over chunks to transform columns, maybe also parallelize it with pool
 def transform_column_data(column, function, chunks):
-
     pass
 
 #function to replace values in dataset, can specify which columns to do replacement or by default will try to do for all
@@ -40,15 +36,9 @@ def replace_data(target_val, default_val, chunks, columns=None):
     print("Data is validated")
 
     results = pool_task(replace_data_in_chunk, [(target_val, default_val, chunk, columns) for chunk in chunks])
-    print("printing results of replace_data_in_chunk")
-    print(results)
     return results
 
 def replace_data_in_chunk(target_val, default_val, chunk, columns=None):
-    print("target " + str(target_val))
-    print("default " + str(default_val))
-    print("Replacing data in chunk: " + str(chunk))
-
     if columns is None:
         columns = chunk.columns
     chunk[columns] = chunk[columns].apply(replace_values, args=(target_val, default_val), axis=0)
@@ -58,14 +48,8 @@ def replace_data_in_chunk(target_val, default_val, chunk, columns=None):
 #target_val: value to remove from dataset
 #default_val: new value to return if current_val equals to target_val
 def replace_values(column_vals, target_val, default_val):
-    print("current " + str(column_vals))
-    print("target " + str(target_val))
-    print("default " + str(default_val))
-
     for index, val in column_vals.items():
-        print('val: {}, target: {}'.format(val, target_val))
         if val == target_val:
-            print("replacing")
             column_vals.loc[index] = default_val
 
     return column_vals

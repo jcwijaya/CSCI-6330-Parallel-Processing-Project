@@ -81,16 +81,14 @@ label_kwargs = {
 }
 
 if __name__ == '__main__':
-    temp = Pixie.from_csv('../sample-covid.csv')
+    temp = Pixie.from_csv('../covid-data.csv')
     for chunk in temp.data_source:
         chunk['ASTHMA'] = chunk['ASTHMA'].astype(str)
         chunk['DIABETES'] = chunk['DIABETES'].astype(str)
-    #TODO: run this with timer and compare with serial execution
     result = replace_data('1', 'Yes', temp.data_source, ['ASTHMA', 'DIABETES'])
     print("finished replacement")
 
     for chunk in result:
-        print(type(chunk[['ASTHMA']]))
         print(chunk.columns)
         print(chunk['ASTHMA'])
         print(chunk['OBESITY'])
