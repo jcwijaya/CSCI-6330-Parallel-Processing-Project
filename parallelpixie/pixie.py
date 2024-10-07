@@ -1,6 +1,7 @@
 import pandas as pd
 from sqlalchemy import create_engine
-from parallelpixie.processors import generate_chunked_plot
+from parallelpixie.processors import generate_chunked_plot, replace_data
+
 
 # This function is used to find the optimal chunk size for the data source.
 # This is NOT FINISHED AND NEEDS REDONE. THIS ONLY WORKS FOR SYSTEMS WITH
@@ -31,6 +32,7 @@ class Pixie:
     def __init__(self, data_source):
         self.data_source = data_source
 
+    #Maybe can query it in chunks by using limit and offset
     @classmethod
     def from_sqlite(cls, db_file: str, table: str):
         connection_string = f"sqlite:///{db_file}"
@@ -48,7 +50,9 @@ class Pixie:
     @classmethod
     def from_csv(cls, filename: str, chunks: int = find_optimal_chunksize()):
         print(f"Optimal chunksize: {chunks}")
-        return cls(pd.read_csv(filename, chunksize=chunks))
+        text_file_reader = pd.read_csv(filename, chunksize=chunks)
+        data_chunks = [data_chunk for data_chunk in text_file_reader]
+        return cls(data_chunks)
 
     @classmethod
     def from_parquet(cls, filename: str):
@@ -77,6 +81,19 @@ label_kwargs = {
 }
 
 if __name__ == '__main__':
-    temp = Pixie.from_csv('../covid-data.csv')
+    temp = Pixie.from_csv('../sample-covid.csv')
+    for chunk in temp.data_source:
+        chunk['ASTHMA'] = chunk['ASTHMA'].astype(str)
+        chunk['DIABETES'] = chunk['DIABETES'].astype(str)
+    #TODO: run this with timer and compare with serial execution
+    result = replace_data('1', 'Yes', temp.data_source, ['ASTHMA', 'DIABETES'])
+    print("finished replacement")
+
+    for chunk in result:
+        print(type(chunk[['ASTHMA']]))
+        print(chunk.columns)
+        print(chunk['ASTHMA'])
+        print(chunk['OBESITY'])
+
     generate_chunked_plot(temp.data_source, 0, 1, plot_kwargs, label_kwargs)
     #mp.freeze_support()
