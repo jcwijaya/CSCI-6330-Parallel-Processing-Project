@@ -1,9 +1,8 @@
 import pandas as pd
 from sqlalchemy import create_engine
-from parallelpixie.processors import generate_chunked_plot, replace_data
 import ijson
-import json
 import pyarrow.parquet as pq
+import psutil as ps
 
 
 # This function is used to find the optimal chunk size for the data source.
@@ -11,24 +10,45 @@ import pyarrow.parquet as pq
 # 32 GB OF MEMORY. We need to find the CPU cores and memory available and
 # calculate the optimal chunk size from there.
 def find_optimal_chunksize():
-    # Memory and chunk size calculation
-    total_memory = 32000000  # 32 GB
-    row_size = 1400000  # Estimate 1 KB per row
-    rows_per_chunk = total_memory // row_size  # Adjust based on estimated row size
-    chunksize = rows_per_chunk * 10000  # Conservative estimate
-    optimal_chunksize = chunksize  # Adjust based on number of cores
+    total_memory = ps.virtual_memory().available // (1024**2)  # Convert bytes to MB
+    num_cores = ps.cpu_count()
+    print(f"total memory: {total_memory} MB")
+    row_size = 0.05  # Estimate 0.05 MB per row for safety
+    optimal_chunksize = total_memory // row_size // num_cores
+    return max(1, optimal_chunksize)  # Ensure at least a 1-row chunk size
 
-    return optimal_chunksize
 
 # Pandas does not natively support chunking parquet files so we'll either need to do it using
 # pyarrow or we'll need to find an alternative.
-def read_parquet_as_chunks(filename: str):
-    pass
+def read_parquet_as_chunks(filename: str, chunksize: int):
+    print(f"optimal chunksize:{chunksize}")
+    parquet_file = pq.ParquetFile(filename)
+    # list to store all chunks
+    chunk_data = []
+    # iterate over the file in chunks
+    for batch in parquet_file.iter_batches(batch_size=chunksize):
+        df_chunk = batch.to_pandas()
+        chunk_data.append(df_chunk)
+    return chunk_data
 
 # Pandas does not natively support chunking JSON files so we'll either need to do it using
 # ijson or we'll need to find an alternative.
-def read_json_as_chunks(filename: str):
-    pass
+def read_json_as_chunks(filename: str, chunksize: int):
+    with open(filename, 'r', encoding='utf-8') as f:
+        # Initialize the JSON reader for the array of objects in the JSON
+        json_reader = ijson.items(f, 'item')  # Adjust 'item' if needed based on your JSON structure
+        temp_data = []  # Temporary storage for the current chunk
+
+        for json_object in json_reader:
+            temp_data.append(json_object)
+            if len(temp_data) >= chunksize:
+                yield pd.DataFrame(pd.json_normalize(temp_data))  # Yield each chunk as a DataFrame
+                temp_data = []  # Reset temporary data for the next chunk
+
+        # Yield any remaining data that didn't fill up to `chunksize`
+        if temp_data:
+            yield pd.DataFrame(pd.json_normalize(temp_data))
+
 
 # Class template for Pixie
 class Pixie:
@@ -40,7 +60,7 @@ class Pixie:
     def from_sqlite(cls, db_file: str, table: str):
         connection_string = f"sqlite:///{db_file}"
         engine = create_engine(connection_string)
-        query = f"SELECT * FROM {table}"
+        query = f"SELECT * FROM "
         return cls(pd.read_sql(query, engine))
 
     @classmethod
@@ -58,81 +78,12 @@ class Pixie:
         return cls(data_chunks)
 
     @classmethod
-    def from_parquet(cls, filename: str):
-        return cls(pd.read_parquet(filename))
+    def from_parquet(cls, filename: str, chunks: int = find_optimal_chunksize()):
+        return cls(read_parquet_as_chunks(filename, chunks))
 
     @classmethod
-    def from_json(cls, filename: str):
-        return cls(pd.read_json(filename))
-
-    # read large json file (using ijson library)
-    @classmethod
-    def read_json_as_chunks(cls, filename: str, chunksize: int = find_optimal_chunksize()):
-        with open(filename, 'r', encoding='utf-8') as f:
-            json_reader = ijson.items(f, '')
-            chunk_data = []
-            temp_data = []  # temporary storage for the current chunk
-            # Initialize an empty list to store JSON objects
-            for json_object in json_reader:
-                temp_data.append(json_object)
-                if len(temp_data) >= chunksize:
-                    chunk_data.append(pd.DataFrame(temp_data))
-                    temp_data = []
-            if temp_data:
-                chunk_data.append(pd.DataFrame(temp_data))
-        return cls(chunk_data)  # Return an instance of Pixie initialized with the DataFrame
-
-    # read large parquet file by chunks (using pyarrow)
-    @classmethod
-    def read_parquet_as_chunks(cls, filename: str, chunksize: int = find_optimal_chunksize()):
-        print(f"optimal chunksize:{chunksize}")
-        parquet_file = pq.ParquetFile(filename)
-        # list to store all chunks
-        chunk_data = []
-        # iterate over the file in chunks
-        for batch in parquet_file.iter_batches(batch_size=chunksize):
-            df_chunk = batch.to_pandas()
-            chunk_data.append(df_chunk)
-        return cls(chunk_data)
+    def from_json(cls, filename: str, chunks: int = find_optimal_chunksize()):
+        return cls(read_json_as_chunks(filename, chunks))
 
     def print_table(self):
         print(self.data_source)
-
-# DUMMY TEST LABELS WE NEED TO MAKE IT SO THE END USER CAN CHANGE THESE EASILY
-plot_kwargs = {
-    'color': 'pink',
-    'marker': 'o',
-    'linestyle': '-',
-    'linewidth': 2,
-    'markersize': 8
-}
-
-label_kwargs = {
-    'title': 'Random Title',
-    'xlabel': 'Random X-Axis Label',
-    'ylabel': 'Random Y-Axis Label'
-}
-
-if __name__ == '__main__':
-    temp = Pixie.from_csv('../covid-data.csv')
-    for chunk in temp.data_source:
-        chunk['ASTHMA'] = chunk['ASTHMA'].astype(str)
-        chunk['DIABETES'] = chunk['DIABETES'].astype(str)
-    result = replace_data('1', 'Yes', temp.data_source, ['ASTHMA', 'DIABETES'])
-    print("finished replacement")
-
-    for chunk in result:
-        print(chunk.columns)
-        print(chunk['ASTHMA'])
-        print(chunk['OBESITY'])
-
-    temp2 = Pixie.read_json_as_chunks('../json-data.json')
-    list_of_chunks = temp2.data_source
-    for chunk in list_of_chunks:
-        print(chunk)
-
-    temp3 = Pixie.read_parquet_as_chunks('../mtcars.parquet')
-    print(temp3.data_source)
-    generate_chunked_plot(temp.data_source, 0, 1, plot_kwargs, label_kwargs)
-    #mp.freeze_support()
-
