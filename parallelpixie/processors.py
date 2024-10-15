@@ -19,17 +19,28 @@ def clean_rows(value, data, columns=None):
 
 #Method for transforming data of a column, will make use of parallelism
 #Can iterate over chunks to transform columns, maybe also parallelize it with pool
-def transform_column_data(column, function, chunks):
-    pass
+#input: column to apply transformation on, chunked data, custom function to do transformation, additional args for function
+def transform_column_data(column, chunks, userFunction, args, num_processes=None):
+
+    validate_data([column], chunks[0])
+    print("Data is validated")
+
+    results = pool_task(transform_column_in_chunk, [(column, chunk, userFunction, args) for chunk in chunks], num_processes)
+    return results
+
+#function to apply a user's function onto a column of a dataframe/chunk
+def transform_column_in_chunk(column, chunk, userFunction, args):
+    chunk[column] = chunk[column].apply(userFunction, args=tuple(args))
+    return chunk
 
 #function to replace values in dataset, can specify which columns to do replacement or by default will try to do for all
-def replace_data(target_val, default_val, chunks, columns=None):
+def replace_data(target_val, default_val, chunks, columns=None, num_processes=None):
     #Use one of the chunks to check if specified columns are valid
     if columns is not None:
         validate_data(columns, chunks[0])
     print("Data is validated")
 
-    results = pool_task(replace_data_in_chunk, [(target_val, default_val, chunk, columns) for chunk in chunks])
+    results = pool_task(replace_data_in_chunk, [(target_val, default_val, chunk, columns) for chunk in chunks], num_processes)
     return results
 
 def replace_data_in_chunk(target_val, default_val, chunk, columns=None):
