@@ -5,7 +5,7 @@ from datetime import datetime
 import pandas as pd
 
 from parallelpixie.pixie import Pixie
-from parallelpixie.processors import replace_data, generate_chunked_plot, transform_column_data
+from parallelpixie.processors import replace_data, generate_chunked_plot, transform_column_data, clean_rows
 
 start = time.time()
 
@@ -78,6 +78,14 @@ def test_transform_column():
     for chunk in results:
         print(chunk.columns)
         print(chunk['DATE_DIED'])
+    return results
+
+def test_clean_rows():
+    temp = Pixie.from_csv('../sample-covid-data.csv')
+    results = clean_rows(97, temp.data_source, 'PREGNANT')
+    for chunk in results:
+        print(chunk.columns)
+        print(chunk['PREGNANT'])
     return results
 
 

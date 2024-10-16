@@ -1,9 +1,6 @@
 import matplotlib.pyplot as plt
 import multiprocessing as mp
 
-import numpy as np
-
-
 # Take in the data submitted to the class and make sure it is valid for whatever the user is attempting
 # to do to it. For example, if the user is trying to make a pie chart using all columns then we need to
 # remove the headers from the data. Or alternatively, if the user is trying to make a plot and requests columns
