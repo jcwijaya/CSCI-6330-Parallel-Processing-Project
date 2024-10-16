@@ -15,7 +15,7 @@ def find_optimal_chunksize():
     num_cores = ps.cpu_count()
     print(f"total memory: {total_memory} MB")
     row_size = 0.05  # Estimate 0.05 MB per row for safety
-    optimal_chunksize = total_memory // row_size // num_cores
+    optimal_chunksize = int(total_memory // row_size // num_cores)
     return max(1, optimal_chunksize)  # Ensure at least a 1-row chunk size
 
 
@@ -30,7 +30,7 @@ def read_parquet_as_chunks(filename: str, chunksize: int):
     for batch in parquet_file.iter_batches(batch_size=chunksize):
         df_chunk = batch.to_pandas()
         chunk_data.append(df_chunk)
-    return chunk_data
+    yield chunk_data
 
 # Pandas does not natively support chunking JSON files so we'll either need to do it using
 # ijson or we'll need to find an alternative.
@@ -75,18 +75,18 @@ class Pixie:
 
     #Maybe can query it in chunks by using limit and offset
     @classmethod
-    def from_sqlite(cls, db_file: str, table: str):
+    def from_sqlite(cls, db_file: str, table: str, chunks: int = find_optimal_chunksize()):
         connection_string = f"sqlite:///{db_file}"
         engine = create_engine(connection_string)
-        query = f"SELECT * FROM "
-        return cls(pd.read_sql(query, engine))
+        query = f"SELECT * FROM {table}"
+        return cls(pd.read_sql(query, engine, chunksize=chunks))
 
     @classmethod
-    def from_postgres(cls, host: str, database: str, username: str, password: str, port: int, table: str):
+    def from_postgres(cls, host: str, database: str, username: str, password: str, port: int, table: str, chunks: int = find_optimal_chunksize()):
         connection_string = f"postgresql://{username}:{password}@{host}:{port}/{database}"
         engine = create_engine(connection_string)
         query = f"SELECT * FROM {table}"
-        return cls(pd.read_sql(query, engine))
+        return cls(pd.read_sql(query, engine, chunksize=chunks))
 
     @classmethod
     def from_csv(cls, filename: str, chunks: int = find_optimal_chunksize()):

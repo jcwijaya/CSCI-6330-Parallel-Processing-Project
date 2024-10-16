@@ -77,7 +77,7 @@ def process_chunk(chunk, x_col, y_col):
     data_points = []
     for row in chunk.itertuples(index=False):
         # Append [x,y] pairs to the data_points list
-        data_points.append((row[x_col], row[y_col]))
+        data_points.append((int(row[x_col]), int(row[y_col])))
     return data_points
 
 #General function for passing in task to be distributed into pool and return a result
