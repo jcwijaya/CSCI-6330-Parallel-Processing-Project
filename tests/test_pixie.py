@@ -56,8 +56,8 @@ def test_parquet():
 
 # Test SQLite
 def test_sqlite():
-    temp = Pixie.from_sqlite('../covid-data.db', "covid-data")
-    #generate_chunked_plot(temp.data_source, 7, 8, plot_kwargs, label_kwargs)
+    temp = Pixie.from_sqlite('../covid-data.db', "covid_data")
+    generate_chunked_plot(temp.data_source, 7, 9, plot_kwargs, label_kwargs)
     return temp.data_source
 
 if __name__ == '__main__':
@@ -65,7 +65,7 @@ if __name__ == '__main__':
     # avg_row_size = sample_df.memory_usage(deep=True).sum() / len(sample_df)
     #print(f"Average row size: {avg_row_size} bytes")
 
-    test_csv()
+    test_sqlite()
 
     processing_time = (time.time() - start) / 60
     print(f"Total processing time: {processing_time} minutes")
