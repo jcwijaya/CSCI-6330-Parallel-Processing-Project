@@ -1,6 +1,9 @@
 import matplotlib.pyplot as plt
 import multiprocessing as mp
 
+import numpy as np
+
+
 # Take in the data submitted to the class and make sure it is valid for whatever the user is attempting
 # to do to it. For example, if the user is trying to make a pie chart using all columns then we need to
 # remove the headers from the data. Or alternatively, if the user is trying to make a plot and requests columns
@@ -12,10 +15,24 @@ def validate_data(columns, data):
     for col in columns:
         if col not in data.columns:
             raise AttributeError(col + ' is not a valid column name.')
+    print("Data is validated")
 
-# TODO: for each chunk of data will check if specified cols have undesired value and delete rows that have it and also speed it up with parallelism
-def clean_rows(value, data, columns=None):
-    pass
+def remove_rows(value, chunk, column):
+    for row in chunk.index:
+        if chunk.loc[row, column] == value:
+            print('dropping value' + str(chunk.loc[row, column]) + ' at ' + str(row) + ' ' + str(column))
+            chunk.drop(row, axis=0, inplace=True)
+
+    return chunk
+
+#for each chunk of data will check if specified column has undesired value and delete rows that have it and also speed it up with parallelism
+def clean_rows(value, chunks, column, num_processes=None):
+
+    validate_data([column], chunks[0])
+
+    results = pool_task(remove_rows, [(value, chunk, column) for chunk in chunks], num_processes)
+    return results
+
 
 #Method for transforming data of a column, will make use of parallelism
 #Can iterate over chunks to transform columns, maybe also parallelize it with pool
@@ -23,7 +40,6 @@ def clean_rows(value, data, columns=None):
 def transform_column_data(column, chunks, userFunction, args, num_processes=None):
 
     validate_data([column], chunks[0])
-    print("Data is validated")
 
     results = pool_task(transform_column_in_chunk, [(column, chunk, userFunction, args) for chunk in chunks], num_processes)
     return results
@@ -38,7 +54,6 @@ def replace_data(target_val, default_val, chunks, columns=None, num_processes=No
     #Use one of the chunks to check if specified columns are valid
     if columns is not None:
         validate_data(columns, chunks[0])
-    print("Data is validated")
 
     results = pool_task(replace_data_in_chunk, [(target_val, default_val, chunk, columns) for chunk in chunks], num_processes)
     return results

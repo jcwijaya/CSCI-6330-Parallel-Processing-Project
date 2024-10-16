@@ -3,6 +3,7 @@ from sqlalchemy import create_engine
 import ijson
 import pyarrow.parquet as pq
 import psutil as ps
+from google.cloud.sql.connector import Connector
 
 
 # This function is used to find the optimal chunk size for the data source.
@@ -49,11 +50,28 @@ def read_json_as_chunks(filename: str, chunksize: int):
         if temp_data:
             yield pd.DataFrame(pd.json_normalize(temp_data))
 
+def get_cloudsql_connection(username, password, database, instance):
+    connector = Connector()
+    connection = connector.connect(
+        instance, #project:region:instance
+        "pymysql",
+        user=username,
+        password=password,
+        db=database,)
+    return connection
 
 # Class template for Pixie
 class Pixie:
     def __init__(self, data_source):
         self.data_source = data_source
+
+    # WORK IN PROGRESS - researching cloudsql connection for sqlalchemy, need to test
+    @classmethod
+    def from_cloudsql(cls, username, password, database, instance, table):
+        connection_string = "mysql+pymysql://"
+        engine = create_engine(connection_string, creator=get_cloudsql_connection(username, password, database, instance))
+        query = f"SELECT * FROM {table}"
+        return cls(pd.read_sql(query, engine))
 
     #Maybe can query it in chunks by using limit and offset
     @classmethod
