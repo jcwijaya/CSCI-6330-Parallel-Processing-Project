@@ -1,14 +1,10 @@
 # Function that starts a clock, runs a function, and returns the elapsed time. Used to measure parallel performance.
 import array
+import sqlite3
 import time
 from datetime import datetime
-
 import pandas as pd
-
-from parallelpixie.pixie import Pixie
-from parallelpixie.processors import replace_data, generate_chunked_plot_local, transform_column_data, clean_rows
-
-start = time.time()
+from matplotlib import pyplot as plt
 
 # DUMMY TEST LABELS WE NEED TO MAKE IT SO THE END USER CAN CHANGE THESE EASILY
 plot_kwargs = {
@@ -27,70 +23,105 @@ label_kwargs = {
 
 # Test CSV
 def test_csv():
-    temp = Pixie.from_csv('../covid-data.csv', 82000)
-    # for chunk in temp.data_source:
-    #     chunk['ASTHMA'] = chunk['ASTHMA'].astype(str)
-    #     chunk['DIABETES'] = chunk['DIABETES'].astype(str)
-    # result = replace_data('1', 'Yes', temp.data_source, ['ASTHMA', 'DIABETES'])
-    # print("finished replacement")
-    #
-    # for chunk in result:
-    #     print(chunk.columns)
-    #     print(chunk['ASTHMA'])
-    #     print(chunk['OBESITY'])
-    #
-    generate_chunked_plot_local(temp.data_source, 7, 8, plot_kwargs, label_kwargs)
-    return temp.data_source
+    # Load the entire dataset
+    df = pd.read_csv("../covid-data.csv")
+
+    # Initialize the plot
+    plt.figure()
+
+    # Iterate over rows and plot each point
+    for _, row in df.iterrows():
+        x = int(row.iloc[7])
+        y = int(row.iloc[8])
+        plt.plot(x, y, **plot_kwargs)
+
+    # Set title and axis labels
+    plt.title(label_kwargs['title'])
+    plt.xlabel(label_kwargs['xlabel'])
+    plt.ylabel(label_kwargs['ylabel'])
+
+    # Show the plot
+    plt.show()
+
 
 # Test JSON
 def test_json():
-    temp = Pixie.from_json('../covid-data.json', 82000)
+    # Load the entire JSON dataset
+    df = pd.read_json("../covid-data.json")
 
-    generate_chunked_plot_local(temp.data_source, 7, 8, plot_kwargs, label_kwargs)
+    # Initialize the plot
+    plt.figure()
+
+    # Iterate over rows and plot each point
+    for _, row in df.iterrows():
+        x = int(row.iloc[7])
+        y = int(row.iloc[8])
+        plt.plot(x, y, **plot_kwargs)
+
+    # Set title and axis labels
+    plt.title(label_kwargs['title'])
+    plt.xlabel(label_kwargs['xlabel'])
+    plt.ylabel(label_kwargs['ylabel'])
+
+    # Show the plot
+    plt.show()
 
 # Test Parquet
 def test_parquet():
-    temp = Pixie.from_parquet('../covid-data.parquet', 82000)
-    generate_chunked_plot_local(temp.data_source, 7, 8, plot_kwargs, label_kwargs)
-    return temp.data_source
+    # Load the entire Parquet dataset
+    df = pd.read_parquet("../covid-data.parquet")
 
-# Test PostgreSQL
+    # Initialize the plot
+    plt.figure()
+
+    # Iterate over rows and plot each point
+    for _, row in df.iterrows():
+        x = int(row.iloc[7])
+        y = int(row.iloc[8])
+        plt.plot(x, y, **plot_kwargs)
+
+    # Set title and axis labels
+    plt.title(label_kwargs['title'])
+    plt.xlabel(label_kwargs['xlabel'])
+    plt.ylabel(label_kwargs['ylabel'])
+
+    # Show the plot
+    plt.show()
 
 # Test SQLite
 def test_sqlite():
-    temp = Pixie.from_sqlite('../covid-data.db', "covid_data", 82000)
-    generate_chunked_plot_local(temp.data_source, 7, 9, plot_kwargs, label_kwargs)
-    return temp.data_source
+    # Connect to the SQLite database
+    conn = sqlite3.connect("../covid-data.db")
 
-def format_date(date_string, date_format):
-    if(date_string == '9999-99-99'):
-        return date_string
-    result = datetime.strptime(date_string, date_format)
-    formattedResult = datetime.strftime(result, '%Y-%m-%d')
-    return formattedResult
+    # Load the dataset from an SQL query
+    df = pd.read_sql_query("SELECT * FROM covid_data", conn)
 
-def test_transform_column():
-    temp = Pixie.from_csv('../sample-covid-data.csv')
-    print('finished reading data')
-    date_format = '%d/%m/%Y'
-    print('calling transform')
-    results = transform_column_data('DATE_DIED', temp.data_source, format_date, [date_format])
+    # Close the connection
+    conn.close()
 
-    for chunk in results:
-        print(chunk.columns)
-        print(chunk['DATE_DIED'])
-    return results
+    # Initialize the plot
+    plt.figure()
 
-def test_clean_rows():
-    temp = Pixie.from_csv('../sample-covid-data.csv')
-    results = clean_rows(97, temp.data_source, 'PREGNANT')
-    for chunk in results:
-        print(chunk.columns)
-        print(chunk['PREGNANT'])
-    return results
+    # Iterate over rows and plot each point
+    for _, row in df.iterrows():
+        x = int(row.iloc[7])
+        y = int(row.iloc[8])
+        plt.plot(x, y, **plot_kwargs)
 
+    # Set title and axis labels
+    plt.title(label_kwargs['title'])
+    plt.xlabel(label_kwargs['xlabel'])
+    plt.ylabel(label_kwargs['ylabel'])
+
+    # Show the plot
+    plt.show()
 
 if __name__ == '__main__':
+    with open("../covid-data.csv", 'r') as f:
+        row_count = sum(1 for _ in f) - 1  # Subtract 1 to exclude header
+    print("Number of rows:", row_count)
+
+
     print("Number of rows in JSON: 3665")
     time_json = array.array('f')
     for i in range(5):
