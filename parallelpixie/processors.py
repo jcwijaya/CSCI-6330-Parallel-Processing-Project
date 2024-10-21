@@ -1,10 +1,13 @@
+import concurrent
+
 import matplotlib.pyplot as plt
 import multiprocessing as mp
+import concurrent.futures
 
 # Take in the data submitted to the class and make sure it is valid for whatever the user is attempting
 # to do to it. For example, if the user is trying to make a pie chart using all columns then we need to
 # remove the headers from the data. Or alternatively, if the user is trying to make a plot and requests columns
-# that don't exist we need to throw an error because pandas will try to parse the data anyway.
+# that don't exist we need to thr ow an error because pandas will try to parse the data anyway.
 #input: list of column names, chunked data
 #output: throws exception if columns do not match dataframe headers
 def validate_data(columns, data):
@@ -63,18 +66,55 @@ def process_chunk(chunk, x_col, y_col):
 def pool_task(task_function, args, num_processes=None):
     if num_processes is None:
         num_processes = mp.cpu_count()
+        with mp.Pool(processes=num_processes
+    ) as pool:
+            results = pool.starmap(task_function, args)
 
-    with mp.Pool(processes=num_processes) as pool:
-        results = pool.starmap(task_function, args,)
+            pool.close()
+            pool.join()
 
-    pool.close()
-    pool.join()
+            return results
+
+def thread_task(task_function, args, num_threads=None):
+    if num_threads is None:
+        num_threads = mp.cpu_count()
+
+    results = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
+        future_to_args = {executor.submit(task_function, *arg): arg for arg in args}
+        for future in concurrent.futures.as_completed(future_to_args):
+            try:
+                results.append(future.result())
+            except Exception as exc:
+                print(f'Task generated an exception: {exc}')
 
     return results
 
 # Set the parameters for the plot. For example, the title, the axis labels, x/y limits, color scheme, etc.
-def generate_chunked_plot(pixie_source, x_index, y_index, plot_kwargs, label_kwargs):
+def generate_chunked_plot_local(pixie_source, x_index, y_index, plot_kwargs, label_kwargs):
+    # Map chunks to the process_chunk function.
+    # results is a list of lists of data points and looks like [[(x1, y1), (x2, y2)], [(x3, y3), (x4, y4)]]
+    # where each list in results is a chunk of data points.
+    results = thread_task(process_chunk, [(chunk, x_index, y_index) for chunk in pixie_source])
 
+    # Flatten the results and plot, this changes it so instead of the chunks being separate lists they are combined into
+    # a list of [x,y] pairs
+    all_data_points = [point for sublist in results for point in sublist]
+
+    # Plot the data
+    for pair in all_data_points:
+        plt.plot(pair[0], pair[1], **plot_kwargs)
+
+    # Set title and axis labels
+    plt.title(label_kwargs['title'])
+    plt.xlabel(label_kwargs['xlabel'])
+    plt.ylabel(label_kwargs['ylabel'])
+
+    # Show the plot
+    plt.show()
+
+# Set the parameters for the plot. For example, the title, the axis labels, x/y limits, color scheme, etc.
+def generate_chunked_plot_server(pixie_source, x_index, y_index, plot_kwargs, label_kwargs):
     # Map chunks to the process_chunk function.
     # results is a list of lists of data points and looks like [[(x1, y1), (x2, y2)], [(x3, y3), (x4, y4)]]
     # where each list in results is a chunk of data points.

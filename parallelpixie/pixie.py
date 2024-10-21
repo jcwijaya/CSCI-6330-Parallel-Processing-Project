@@ -1,3 +1,5 @@
+import time
+
 import pandas as pd
 from sqlalchemy import create_engine
 import ijson
@@ -12,7 +14,6 @@ import psutil as ps
 def find_optimal_chunksize():
     total_memory = ps.virtual_memory().available // (1024**2)  # Convert bytes to MB
     num_cores = ps.cpu_count()
-    print(f"total memory: {total_memory} MB")
     row_size = 0.05  # Estimate 0.05 MB per row for safety
     optimal_chunksize = int(total_memory // row_size // num_cores)
     return max(1, optimal_chunksize)  # Ensure at least a 1-row chunk size
@@ -71,10 +72,8 @@ class Pixie:
 
     @classmethod
     def from_csv(cls, filename: str, chunks: int = find_optimal_chunksize()):
-        print(f"Optimal chunksize: {chunks}")
         text_file_reader = pd.read_csv(filename, chunksize=chunks)
-        data_chunks = [data_chunk for data_chunk in text_file_reader]
-        return cls(data_chunks)
+        return cls(text_file_reader)
 
     @classmethod
     def from_parquet(cls, filename: str, chunks: int = find_optimal_chunksize()):
