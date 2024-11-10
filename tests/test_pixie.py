@@ -1,25 +1,13 @@
-# Function that starts a clock, runs a function, and returns the elapsed time. Used to measure parallel performance.
-import array
-import time
-
-import pandas as pd
-
+import matplotlib.pyplot as plt
 from parallelpixie.pixie import Pixie
-<<<<<<< Updated upstream
-from parallelpixie.processors import replace_data, generate_chunked_plot
-=======
-from parallelpixie.processors import replace_data, generate_chunked_plot_local, transform_column_data, clean_rows
->>>>>>> Stashed changes
-
-start = time.time()
+from parallelpixie.processors import generate_plot
 
 # DUMMY TEST LABELS WE NEED TO MAKE IT SO THE END USER CAN CHANGE THESE EASILY
 plot_kwargs = {
     'color': 'pink',
     'marker': 'o',
     'linestyle': '-',
-    'linewidth': 2,
-    'markersize': 8
+    'linewidth': 2
 }
 
 label_kwargs = {
@@ -30,80 +18,39 @@ label_kwargs = {
 
 # Test CSV
 def test_csv():
-    temp = Pixie.from_csv('../covid-data.csv', 82000)
-    # for chunk in temp.data_source:
-    #     chunk['ASTHMA'] = chunk['ASTHMA'].astype(str)
-    #     chunk['DIABETES'] = chunk['DIABETES'].astype(str)
-    # result = replace_data('1', 'Yes', temp.data_source, ['ASTHMA', 'DIABETES'])
-    # print("finished replacement")
-    #
-    # for chunk in result:
-    #     print(chunk.columns)
-    #     print(chunk['ASTHMA'])
-    #     print(chunk['OBESITY'])
-    #
-    generate_chunked_plot_local(temp.data_source, 7, 8, plot_kwargs, label_kwargs)
-    return temp.data_source
+    temp = Pixie.from_csv('../linear_xy_large.csv')
+    return generate_plot(temp.data_source, plt.plot, 0, 1, plot_kwargs, label_kwargs, "local", 'linear-data.png', True)
 
 # Test JSON
 def test_json():
-    temp = Pixie.from_json('../covid-data.json', 82000)
-
-    generate_chunked_plot_local(temp.data_source, 7, 8, plot_kwargs, label_kwargs)
+    temp = Pixie.from_json('../linear_xy_large.json')
+    return generate_plot(temp.data_source, plt.plot, 0, 1, plot_kwargs, label_kwargs, "local", 'linear-data.png', True)
 
 # Test Parquet
 def test_parquet():
-    temp = Pixie.from_parquet('../covid-data.parquet', 82000)
-    generate_chunked_plot_local(temp.data_source, 7, 8, plot_kwargs, label_kwargs)
-    return temp.data_source
-
-# Test PostgreSQL
+    temp = Pixie.from_parquet('../linear_xy_large.parquet')
+    return generate_plot(temp.data_source, plt.plot, 0, 1, plot_kwargs, label_kwargs, "local", 'linear-data.png', True)
 
 # Test SQLite
 def test_sqlite():
-    temp = Pixie.from_sqlite('../covid-data.db', "covid_data", 82000)
-    generate_chunked_plot_local(temp.data_source, 7, 9, plot_kwargs, label_kwargs)
-    return temp.data_source
+    temp = Pixie.from_sqlite('../linear_xy_large.db', "xy_data")
+    return generate_plot(temp.data_source, plt.plot, 0, 1, plot_kwargs, label_kwargs, "local", 'linear-data.png', True)
 
 if __name__ == '__main__':
-    print("Number of rows in JSON: 3665")
-    time_json = array.array('f')
-    for i in range(5):
-        start = time.time()
-        test_json()
-        processing_time = (time.time() - start) / 60
-        time_json.append(processing_time)
-        print(f"Processing time for JSON #{i} {processing_time} minutes")
-    print(f"JSON average processing time: {sum(time_json) / len(time_json)} minutes")
+    csv_time = {}
+    json_time = {}
+    parquet_time = {}
+    sqlite_time = {}
 
-    print("Number of rows in Parquet: 124,856")
-    time_parquet = array.array('f')
-    for i in range(5):
-        start = time.time()
-        test_parquet()
-        processing_time = (time.time() - start) / 60
-        time_parquet.append(processing_time)
-        print(f"Processing time for Parquet #{i} {processing_time} minutes")
-    print(f"Parquet average processing time: {sum(time_parquet) / len(time_parquet)} minutes")
+    for x in range(5):
+        csv_time[x] = test_csv()
+        json_time[x] = test_json()
+        parquet_time[x] = test_parquet()
+        sqlite_time[x] = test_sqlite()
+        print(f"Test {x} complete")
 
-    print("Number of rows in SQLite: 1,048,575")
-    time_sqlite = array.array('f')
-    for i in range(5):
-        start = time.time()
-        test_sqlite()
-        processing_time = (time.time() - start) / 60
-        time_sqlite.append(processing_time)
-        print(f"Processing time for SQLite #{i} {processing_time} minutes")
-    print(f"SQLite average processing time: {sum(time_sqlite) / len(time_sqlite)} minutes")
-
-    print("Number of rows in CSV: 1,048,575")
-    time_csv = array.array('f')
-    for i in range(5):
-        start = time.time()
-        test_csv()
-        processing_time = (time.time() - start) / 60
-        time_csv.append(processing_time)
-        print(f"Processing time for CSV #{i} {processing_time} minutes")
-    print(f"CSV average processing time: {sum(time_csv) / len(time_csv)} minutes")
-
-    print("All tests complete")
+    print("Avg time for CSV:", sum(csv_time.values()) / len(csv_time))
+    print("Avg time for PostgreSQL:", sum(csv_time.values()) / len(csv_time))
+    print("Avg time for JSON:", sum(json_time.values()) / len(json_time))
+    print("Avg time for Parquet:", sum(parquet_time.values()) / len(parquet_time))
+    print("Avg time for SQLite:", sum(sqlite_time.values()) / len(sqlite_time))
