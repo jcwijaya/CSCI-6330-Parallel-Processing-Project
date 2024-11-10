@@ -46,5 +46,6 @@ def test_json():
     
     # Syntax: Pixie.from_<type>(filename, chunks)>
     temp = Pixie.from_json('../covid-data.json', 82000)
-    # Syntax: generate_chunked_plot_local(pixie_source, x_index, y_index, plot_kwargs, label_kwargs)
+    # Syntax: generate_plot(pixie_source, x_index, y_index, plot_kwargs, label_kwargs)
     generate_chunked_plot_local(temp.data_source, 7, 8, plot_kwargs, label_kwargs)
+```

@@ -1,6 +1,11 @@
 import matplotlib.pyplot as plt
+import array
+from datetime import datetime
+
+import pandas as pd
+
 from parallelpixie.pixie import Pixie
-from parallelpixie.processors import generate_plot
+from parallelpixie.processors import replace_data, generate_plot, transform_column_data, clean_rows
 
 # DUMMY TEST LABELS WE NEED TO MAKE IT SO THE END USER CAN CHANGE THESE EASILY
 plot_kwargs = {
@@ -36,6 +41,33 @@ def test_sqlite():
     temp = Pixie.from_sqlite('../linear_xy_large.db', "xy_data")
     return generate_plot(temp.data_source, plt.plot, 0, 1, plot_kwargs, label_kwargs, "local", 'linear-data.png', True)
 
+def format_date(date_string, date_format):
+    if(date_string == '9999-99-99'):
+        return date_string
+    result = datetime.strptime(date_string, date_format)
+    formattedResult = datetime.strftime(result, '%Y-%m-%d')
+    return formattedResult
+
+def test_transform_column():
+    temp = Pixie.from_csv('../sample-covid-data.csv')
+    print('finished reading data')
+    date_format = '%d/%m/%Y'
+    print('calling transform')
+    results = transform_column_data('DATE_DIED', temp.data_source, format_date, [date_format])
+
+    for chunk in results:
+        print(chunk.columns)
+        print(chunk['DATE_DIED'])
+    return results
+
+def test_clean_rows():
+    temp = Pixie.from_csv('../sample-covid-data.csv')
+    results = clean_rows(97, temp.data_source, 'PREGNANT')
+    for chunk in results:
+        print(chunk.columns)
+        print(chunk['PREGNANT'])
+    return results
+  
 if __name__ == '__main__':
     csv_time = {}
     json_time = {}

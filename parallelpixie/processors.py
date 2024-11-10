@@ -28,6 +28,42 @@ def validate_data(columns, data):
         if col not in data.columns:
             # Raise an AttributeError if the column name is not found
             raise AttributeError(col + ' is not a valid column name.')
+            
+            
+            
+def remove_rows(value, chunk, column):
+    for row in chunk.index:
+        if chunk.loc[row, column] == value:
+            print('dropping value' + str(chunk.loc[row, column]) + ' at ' + str(row) + ' ' + str(column))
+            chunk.drop(row, axis=0, inplace=True)
+
+    return chunk
+
+  
+  
+#for each chunk of data will check if specified column has undesired value and delete rows that have it and also speed it up with parallelism
+def clean_rows(value, chunks, column, num_processes=None):
+
+    validate_data([column], chunks[0])
+
+    results = pool_task(remove_rows, [(value, chunk, column) for chunk in chunks], num_processes)
+    return results
+            
+    
+            
+#Method for transforming data of a column, will make use of parallelism
+#Can iterate over chunks to transform columns, maybe also parallelize it with pool
+#input: column to apply transformation on, chunked data, custom function to do transformation, additional args for function
+def transform_column_data(column, chunks, userFunction, args, num_processes=None):
+    #function to apply a user's function onto a column of a dataframe/chunk
+    def transform_column_in_chunk(column, chunk, userFunction, args):
+        chunk[column] = chunk[column].apply(userFunction, args=tuple(args))
+        return chunk
+
+    validate_data([column], chunks[0])
+
+    results = pool_task(transform_column_in_chunk, [(column, chunk, userFunction, args) for chunk in chunks], num_processes)
+    return results
 
 
 
