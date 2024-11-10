@@ -1,11 +1,10 @@
-import time
-
-import pandas as pd
-from sqlalchemy import create_engine
 import ijson
-import pyarrow.parquet as pq
+import pandas as pd
 import psutil as ps
+import pyarrow.parquet as pq
+from sqlalchemy import create_engine
 from google.cloud.sql.connector import Connector
+
 
 
 # This function is used to find the optimal chunk size for the data source.
@@ -13,11 +12,12 @@ from google.cloud.sql.connector import Connector
 # 32 GB OF MEMORY. We need to find the CPU cores and memory available and
 # calculate the optimal chunk size from there.
 def find_optimal_chunksize():
-    total_memory = ps.virtual_memory().available // (1024**2)  # Convert bytes to MB
+    total_memory = ps.virtual_memory().available // (1024 ** 2)  # Convert bytes to MB
     num_cores = ps.cpu_count()
-    row_size = 0.05  # Estimate 0.05 MB per row for safety
-    optimal_chunksize = int(total_memory // row_size // num_cores)
-    return max(1, optimal_chunksize)  # Ensure at least a 1-row chunk size
+    row_size = 1.001  # Estimate 0.05 MB per row for safety
+    t = row_size * (total_memory * 0.95) * num_cores
+    return max(1, int(t))
+
 
 
 # Pandas does not natively support chunking parquet files so we'll either need to do it using
@@ -25,13 +25,15 @@ def find_optimal_chunksize():
 def read_parquet_as_chunks(filename: str, chunksize: int):
     print(f"optimal chunksize:{chunksize}")
     parquet_file = pq.ParquetFile(filename)
-    # list to store all chunks
-    chunk_data = []
-    # iterate over the file in chunks
+
+    # Iterate over the file in chunks
     for batch in parquet_file.iter_batches(batch_size=chunksize):
+        # Convert the current batch to a pandas DataFrame
         df_chunk = batch.to_pandas()
-        chunk_data.append(df_chunk)
-    yield chunk_data
+        # Yield each chunk one at a time
+        yield df_chunk
+
+
 
 # Pandas does not natively support chunking JSON files so we'll either need to do it using
 # ijson or we'll need to find an alternative.
@@ -51,6 +53,8 @@ def read_json_as_chunks(filename: str, chunksize: int):
         if temp_data:
             yield pd.DataFrame(pd.json_normalize(temp_data))
 
+
+            
 def get_cloudsql_connection(username, password, database, instance):
     connector = Connector()
     connection = connector.connect(
@@ -61,11 +65,13 @@ def get_cloudsql_connection(username, password, database, instance):
         db=database,)
     return connection
 
+  
+  
 # Class template for Pixie
 class Pixie:
     def __init__(self, data_source):
         self.data_source = data_source
-
+        
     # WORK IN PROGRESS - researching cloudsql connection for sqlalchemy, need to test
     @classmethod
     def from_cloudsql(cls, username, password, database, instance, table):
@@ -74,7 +80,6 @@ class Pixie:
         query = f"SELECT * FROM {table}"
         return cls(pd.read_sql(query, engine))
 
-    #Maybe can query it in chunks by using limit and offset
     @classmethod
     def from_sqlite(cls, db_file: str, table: str, chunks: int = find_optimal_chunksize()):
         connection_string = f"sqlite:///{db_file}"
@@ -83,7 +88,8 @@ class Pixie:
         return cls(pd.read_sql(query, engine, chunksize=chunks))
 
     @classmethod
-    def from_postgres(cls, host: str, database: str, username: str, password: str, port: int, table: str, chunks: int = find_optimal_chunksize()):
+    def from_postgres(cls, host: str, database: str, username: str, password: str, port: int, table: str,
+                      chunks: int = find_optimal_chunksize()):
         connection_string = f"postgresql://{username}:{password}@{host}:{port}/{database}"
         engine = create_engine(connection_string)
         query = f"SELECT * FROM {table}"

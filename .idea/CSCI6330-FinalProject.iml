@@ -4,8 +4,9 @@
     <content url="file://$MODULE_DIR$">
       <excludeFolder url="file://$MODULE_DIR$/.venv" />
       <excludeFolder url="file://$MODULE_DIR$/venv" />
+      <excludeFolder url="file://$MODULE_DIR$/v" />
     </content>
-    <orderEntry type="jdk" jdkName="Python 3.12 (CSCI6330-FinalProject) (2)" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="Python 3.12 (CSCI-6330-Parallel-Processing-Project) (2)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
 </module>
