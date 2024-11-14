@@ -1,6 +1,6 @@
 # Function that starts a clock, runs a function, and returns the elapsed time. Used to measure parallel performance.
 import time
-
+import psycopg2
 import pandas as pd
 import sqlite3
 from matplotlib import pyplot as plt
@@ -21,19 +21,19 @@ label_kwargs = {
 }
 
 
+
 # Test CSV
 def test_csv():
+    start1 = time.time()
     # Load the entire dataset
-    df = pd.read_csv("../covid-data.csv")
+    df = pd.read_csv("../linear_xy_large.csv")
 
     # Initialize the plot
     plt.figure()
 
     # Iterate over rows and plot each point
-    for _, row in df.iterrows():
-        x = int(row.iloc[7])
-        y = int(row.iloc[8])
-        plt.plot(x, y, **plot_kwargs)
+    x_pts, y_pts = [int(row[0]) for row in df.itertuples(index=False)], [int(row[1]) for row in df.itertuples(index=False)]
+    plt.plot(x_pts, y_pts, **plot_kwargs)
 
     # Set title and axis labels
     plt.title(label_kwargs['title'])
@@ -41,22 +41,23 @@ def test_csv():
     plt.ylabel(label_kwargs['ylabel'])
 
     # Show the plot
-    plt.show()
+    plt.savefig("plot.png", format="png", dpi=300)
+    return time.time() - start1
+
 
 
 # Test JSON
 def test_json():
+    start2 = time.time()
     # Load the entire JSON dataset
-    df = pd.read_json("../covid-data.json")
+    df = pd.read_json("../linear_xy_large.json")
 
     # Initialize the plot
     plt.figure()
 
     # Iterate over rows and plot each point
-    for _, row in df.iterrows():
-        x = int(row.iloc[7])
-        y = int(row.iloc[8])
-        plt.plot(x, y, **plot_kwargs)
+    x_pts, y_pts = [int(row[0]) for row in df.itertuples(index=False)], [int(row[1]) for row in df.itertuples(index=False)]
+    plt.plot(x_pts, y_pts, **plot_kwargs)
 
     # Set title and axis labels
     plt.title(label_kwargs['title'])
@@ -64,22 +65,23 @@ def test_json():
     plt.ylabel(label_kwargs['ylabel'])
 
     # Show the plot
-    plt.show()
+    plt.savefig("plot.png", format="png", dpi=300)
+    return time.time() - start2
+
 
 
 # Test Parquet
 def test_parquet():
+    start3 = time.time()
     # Load the entire Parquet dataset
-    df = pd.read_parquet("../covid-data.parquet")
+    df = pd.read_parquet("../linear_xy_large.parquet")
 
     # Initialize the plot
     plt.figure()
 
     # Iterate over rows and plot each point
-    for _, row in df.iterrows():
-        x = int(row.iloc[7])
-        y = int(row.iloc[8])
-        plt.plot(x, y, **plot_kwargs)
+    x_pts, y_pts = [int(row[0]) for row in df.itertuples(index=False)], [int(row[1]) for row in df.itertuples(index=False)]
+    plt.plot(x_pts, y_pts, **plot_kwargs)
 
     # Set title and axis labels
     plt.title(label_kwargs['title'])
@@ -87,16 +89,19 @@ def test_parquet():
     plt.ylabel(label_kwargs['ylabel'])
 
     # Show the plot
-    plt.show()
+    plt.savefig("plot.png", format="png", dpi=300)
+    return time.time() - start3
+
 
 
 # Test SQLite
 def test_sqlite():
+    start4 = time.time()
     # Connect to the SQLite database
-    conn = sqlite3.connect("../covid-data.db")
+    conn = sqlite3.connect("../linear_xy_large.db")
 
     # Load the dataset from an SQL query
-    df = pd.read_sql_query("SELECT * FROM covid_data", conn)
+    df = pd.read_sql_query("SELECT * FROM xy_data", conn)
 
     # Close the connection
     conn.close()
@@ -105,10 +110,8 @@ def test_sqlite():
     plt.figure()
 
     # Iterate over rows and plot each point
-    for _, row in df.iterrows():
-        x = int(row.iloc[7])
-        y = int(row.iloc[8])
-        plt.plot(x, y, **plot_kwargs)
+    x_pts, y_pts = [int(row[0]) for row in df.itertuples(index=False)], [int(row[1]) for row in df.itertuples(index=False)]
+    plt.plot(x_pts, y_pts, **plot_kwargs)
 
     # Set title and axis labels
     plt.title(label_kwargs['title'])
@@ -116,17 +119,27 @@ def test_sqlite():
     plt.ylabel(label_kwargs['ylabel'])
 
     # Show the plot
-    plt.show()
+    plt.savefig("plot.png", format="png", dpi=300)
+
+    return time.time() - start4
 
 
-if __name__ == '__main__':
 
-    start_plot = time.time()
-    # Connect to the SQLite database
-    conn = sqlite3.connect("../covid-data.db")
+# Test PostgreSQL
+def test_postgresql():
+    start5 = time.time()
+
+    # Connect to the PostgreSQL database
+    conn = psycopg2.connect(
+        dbname="linear_xy_large",
+        user="postgres",
+        password="postgres",
+        host="localhost",
+        port="5432"
+    )
 
     # Load the dataset from an SQL query
-    df = pd.read_sql_query("SELECT * FROM covid_data", conn)
+    df = pd.read_sql_query("SELECT * FROM xy_data", conn)
 
     # Close the connection
     conn.close()
@@ -135,65 +148,44 @@ if __name__ == '__main__':
     plt.figure()
 
     # Iterate over rows and plot each point
-    iter = 0
-    for _, row in df.iterrows():
-        iter += 1
-        print(f"Index: {iter}")
-        x = int(row.iloc[7])
-        y = int(row.iloc[8])
-        plt.plot(x, y, **plot_kwargs)
+    x_pts, y_pts = [int(row[0]) for row in df.itertuples(index=False)], [int(row[1]) for row in df.itertuples(index=False)]
+    plt.plot(x_pts, y_pts, **plot_kwargs)
 
     # Set title and axis labels
     plt.title(label_kwargs['title'])
     plt.xlabel(label_kwargs['xlabel'])
     plt.ylabel(label_kwargs['ylabel'])
 
-    end_plot = (time.time() - start_plot) / 60
+    # Show the plot
+    plt.savefig("plot.png", format="png", dpi=300)
 
-    print(f"Plotting time: #{end_plot} minutes")
-    # with open("../covid-data.csv", 'r') as f:
-    #     row_count = sum(1 for _ in f) - 1  # Subtract 1 to exclude header
-    # print("Number of rows:", row_count)
-    #
-    #
-    # print("Number of rows in JSON: 3665")
-    # time_json = array.array('f')
-    # for i in range(5):
-    #     start = time.time()
-    #     test_json()
-    #     processing_time = (time.time() - start) / 60
-    #     time_json.append(processing_time)
-    #     print(f"Processing time for JSON #{i} {processing_time} minutes")
-    # print(f"JSON average processing time: {sum(time_json) / len(time_json)} minutes")
-    #
-    # print("Number of rows in Parquet: 124,856")
-    # time_parquet = array.array('f')
-    # for i in range(5):
-    #     start = time.time()
-    #     test_parquet()
-    #     processing_time = (time.time() - start) / 60
-    #     time_parquet.append(processing_time)
-    #     print(f"Processing time for Parquet #{i} {processing_time} minutes")
-    # print(f"Parquet average processing time: {sum(time_parquet) / len(time_parquet)} minutes")
-    #
-    # print("Number of rows in SQLite: 1,048,575")
-    # time_sqlite = array.array('f')
-    # for i in range(5):
-    #     start = time.time()
-    #     test_sqlite()
-    #     processing_time = (time.time() - start) / 60
-    #     time_sqlite.append(processing_time)
-    #     print(f"Processing time for SQLite #{i} {processing_time} minutes")
-    # print(f"SQLite average processing time: {sum(time_sqlite) / len(time_sqlite)} minutes")
-    #
-    # print("Number of rows in CSV: 1,048,575")
-    # time_csv = array.array('f')
-    # for i in range(5):
-    #     start = time.time()
-    #     test_csv()
-    #     processing_time = (time.time() - start) / 60
-    #     time_csv.append(processing_time)
-    #     print(f"Processing time for CSV #{i} {processing_time} minutes")
-    # print(f"CSV average processing time: {sum(time_csv) / len(time_csv)} minutes")
+    return time.time() - start5
 
-    print("All tests complete")
+
+
+if __name__ == '__main__':
+    csv_time = {}
+    json_time = {}
+    parquet_time = {}
+    sqlite_time = {}
+    postgresqlite_time = {}
+
+    for x in range(1):
+        csv_time[x] = test_csv()
+        json_time[x] = test_json()
+        parquet_time[x] = test_parquet()
+        sqlite_time[x] = test_sqlite()
+        postgresqlite_time[x] = test_postgresql()
+        print(f"Test {x} complete")
+
+    print("Avg time for CSV:", sum(csv_time.values()) / len(csv_time))
+    print("Avg time for PostgreSQL:", sum(postgresqlite_time.values()) / len(postgresqlite_time))
+    print("Avg time for JSON:", sum(json_time.values()) / len(json_time))
+    print("Avg time for Parquet:", sum(parquet_time.values()) / len(parquet_time))
+    print("Avg time for SQLite:", sum(sqlite_time.values()) / len(sqlite_time))
+
+    print(csv_time)
+    print(postgresqlite_time)
+    print(json_time)
+    print(parquet_time)
+    print(sqlite_time)

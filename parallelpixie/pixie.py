@@ -96,8 +96,8 @@ class Pixie:
         return cls(pd.read_sql(query, engine, chunksize=chunks))
 
     @classmethod
-    def from_csv(cls, filename: str, chunks: int = find_optimal_chunksize()):
-        text_file_reader = pd.read_csv(filename, chunksize=chunks)
+    def from_csv(cls, filename: str, chunks: int = find_optimal_chunksize(), **kwargs):
+        text_file_reader = pd.read_csv(filename, chunksize=chunks, **kwargs)
         return cls(text_file_reader)
 
     @classmethod
