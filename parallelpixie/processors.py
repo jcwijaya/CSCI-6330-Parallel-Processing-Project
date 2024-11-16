@@ -1,5 +1,4 @@
 import time
-
 import concurrent
 import concurrent.futures
 import matplotlib.pyplot as plt
@@ -118,9 +117,7 @@ def replace_values(column_vals, target_val, default_val):
 #   input: chunk of data, x column index, y column index
 #   output: list of data points
 def process_chunk(chunk, x_col, y_col):
-    # Initialize an empty list to store (x, y) data points
     data_points = []
-
     # Iterate over each row in the chunk, accessing row data as named tuples
     for row in chunk.itertuples(index=False):
         # Append an (x, y) pair to the data_points list by extracting the values
@@ -182,6 +179,14 @@ def thread_task(task_function, args, num_threads=None):
     return results
 
 
+
+def extract_points(sublist):
+    x_points = [point[0] for point in sublist]
+    y_points = [point[1] for point in sublist]
+    return x_points, y_points
+
+
+
 # generate plot(): function that takes in a pixie source, plot function, x index, y index, plot kwargs, label kwargs, type of data, and output path
 #
 # inputs:
@@ -197,26 +202,34 @@ def thread_task(task_function, args, num_threads=None):
 #     verbose: Boolean to processing information.
 
 def generate_plot(pixie_source, plot_func, x_index, y_index, plot_kwargs, label_kwargs, data_type='local', output_path='plot.png', verbose=False):
+    start_main = time.time()
+
     # Start spinner animation
-    SPINNER.start()
+    if verbose:
+        SPINNER.start()
 
     # Prepare arguments for each chunk of data by pairing each chunk with x and y indices
     chunk_args = [(chunk, x_index, y_index) for chunk in pixie_source]
 
     # Decide on the type of processing is needed, pooling is usually better for local file data,
     # threading is usually better for server based data
-    if data_type == 'local':
+    if data_type == 'server':
         # Use a multiprocessing pool to process chunks
         processed_chunks = pool_task(process_chunk, chunk_args)
-    else:
+    if data_type == 'local':
         # Use a threading to process chunks
         processed_chunks = thread_task(process_chunk, chunk_args)
 
     if verbose:
         print("Flattening data...")
 
-    # Flatten the list of data points
-    all_data_points = [point for sublist in processed_chunks for point in sublist]
+    x_pts = []
+    y_pts = []
+     # Flatten the list of data points
+    for chunk in processed_chunks:
+        new_x, new_y = extract_points(chunk)
+        x_pts.extend(new_x)
+        y_pts.extend(new_y)
 
     # Set title and axis labels
     plt.title(label_kwargs['title'])
@@ -226,9 +239,7 @@ def generate_plot(pixie_source, plot_func, x_index, y_index, plot_kwargs, label_
     if verbose:
         SPINNER.start("Plotting points using matplotlib...")
 
-    start_main = time.time()
-    for (x, y) in all_data_points:
-        plot_func(x, y, **plot_kwargs)
+    plot_func(x_pts, y_pts, **plot_kwargs)
 
     # Show the plot
     if verbose:
@@ -240,4 +251,5 @@ def generate_plot(pixie_source, plot_func, x_index, y_index, plot_kwargs, label_
 
     if verbose:
         print(f"Processing time: #{(time.time() - start_main) / 60} minutes")
-        return (time.time() - start_main) / 60
+
+    return (time.time() - start_main) / 60

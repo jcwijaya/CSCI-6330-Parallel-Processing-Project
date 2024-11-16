@@ -44,8 +44,21 @@ def test_json():
         'ylabel': 'Random Y-Axis Label'
     }
     
-    # Syntax: Pixie.from_<type>(filename, chunks)>
-    temp = Pixie.from_json('../covid-data.json', 82000)
-    # Syntax: generate_plot(pixie_source, x_index, y_index, plot_kwargs, label_kwargs)
-    generate_chunked_plot_local(temp.data_source, 7, 8, plot_kwargs, label_kwargs)
+    # Syntax: Pixie.from_<type>(filename, chunks (if unspecified, optimal chunks are determined automatically))>
+    temp = Pixie.from_json('../covid-data.json')
+    
+    # generate plot(): function that takes in a pixie source, plot function, x index, y index, plot kwargs, label kwargs, type of data, and output path
+    #
+    # inputs:
+    #     pixie_source: Parallel Pixie object
+    #     plot_func: Type of plot function, either plt.plot, plt.scatter, or plt.bar
+    #     x_index: Index of x column
+    #     y_index: Index of y column
+    #     plot_kwargs: Keyword arguments for plot function
+    #     label_kwargs: Keyword arguments for title and axis labels
+    #     data_type: Type of data, either 'local' or 'server', defaults to local
+    #     output_path: Path to save plot, defaults to local path as plot.png
+    #     output_path: Path to save plot
+    #     verbose: Boolean to processing information.
+    generate_plot(temp.data_source, plt.plot, 0, 1, plot_kwargs, label_kwargs, "local", 'linear-data.png', True)
 ```
