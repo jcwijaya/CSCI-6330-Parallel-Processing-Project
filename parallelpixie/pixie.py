@@ -1,7 +1,10 @@
+import os
+
 import ijson
 import pandas as pd
 import psutil as ps
 import pyarrow.parquet as pq
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from google.cloud.sql.connector import Connector
 
@@ -53,19 +56,16 @@ def read_json_as_chunks(filename: str, chunksize: int):
         if temp_data:
             yield pd.DataFrame(pd.json_normalize(temp_data))
 
-
-            
-def get_cloudsql_connection(username, password, database, instance):
+def get_cloudsql_connection():
+    load_dotenv()
     connector = Connector()
     connection = connector.connect(
-        instance, #project:region:instance
+        os.getenv("DB_HOST"), #project:region:instance
         "pymysql",
-        user=username,
-        password=password,
-        db=database,)
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASS"),
+        db=os.getenv("DB_DATABASE"),)
     return connection
-
-  
   
 # Class template for Pixie
 class Pixie:
@@ -74,11 +74,11 @@ class Pixie:
         
     # WORK IN PROGRESS - researching cloudsql connection for sqlalchemy, need to test
     @classmethod
-    def from_cloudsql(cls, username, password, database, instance, table):
+    def from_cloudsql(cls, table, chunks: int = find_optimal_chunksize()):
         connection_string = "mysql+pymysql://"
-        engine = create_engine(connection_string, creator=get_cloudsql_connection(username, password, database, instance))
+        engine = create_engine(connection_string, creator=get_cloudsql_connection)
         query = f"SELECT * FROM {table}"
-        return cls(pd.read_sql(query, engine))
+        return cls(pd.read_sql(query, engine, chunksize=chunks))
 
     @classmethod
     def from_sqlite(cls, db_file: str, table: str, chunks: int = find_optimal_chunksize()):

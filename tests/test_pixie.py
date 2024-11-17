@@ -7,7 +7,6 @@ import matplotlib.ticker as mticker
 from datetime import datetime
 
 import pandas as pd
-from dotenv import load_dotenv
 
 from parallelpixie.pixie import Pixie
 from parallelpixie.processors import replace_data, generate_plot, transform_column_data, clean_rows, SPINNER, pool_task, \
@@ -55,6 +54,9 @@ def test_postgresql():
     temp = Pixie.from_postgres('localhost', 'linear_xy_large', 'postgres', 'postgres', 5432, 'xy_data')
     return generate_plot(temp.data_source, plt.plot, 0, 1, plot_kwargs, label_kwargs, "local", 'linear-data.png', True)
 
+def test_cloudsql():
+    temp = Pixie.from_cloudsql("linear_data")
+    return generate_plot(temp.data_source, plt.plot, 0, 1, plot_kwargs, label_kwargs, "local", 'linear-data.png', True)
 
 
 def format_date(date_string, date_format):
@@ -83,13 +85,6 @@ def test_clean_rows():
         print(chunk.columns)
         print(chunk['PREGNANT'])
     return results
-
-def test_cloudsql_connection():
-    load_dotenv()
-    user = os.getenv("DB_USER")
-    temp = Pixie.from_cloudsql(os.getenv("DB_USER"), os.getenv("DB_PASS"), os.getenv("DB_DATABASE"), os.getenv("DB_HOST"), "covid_data")
-    print(temp.data_source)
-
 
 # process_chunk: takes in a chunk of data and returns a list of data points
 #   input: chunk of data, x column index, y column index
@@ -181,6 +176,7 @@ if __name__ == '__main__':
     json_time = {}
     parquet_time = {}
     sqlite_time = {}
+    cloudsql_time = {}
 
     for x in range(1):
         csv_time[x] = test_csv()
@@ -188,6 +184,7 @@ if __name__ == '__main__':
         json_time[x] = test_json()
         parquet_time[x] = test_parquet()
         sqlite_time[x] = test_sqlite()
+        cloudsql_time[x] = test_cloudsql()
         print(f"Test {x} complete")
 
     print("Avg time for CSV:", sum(csv_time.values()) / len(csv_time))
@@ -195,3 +192,4 @@ if __name__ == '__main__':
     print("Avg time for JSON:", sum(json_time.values()) / len(json_time))
     print("Avg time for Parquet:", sum(parquet_time.values()) / len(parquet_time))
     print("Avg time for SQLite:", sum(sqlite_time.values()) / len(sqlite_time))
+    print("Avg time for CloudSQL:", sum(cloudsql_time.values()) / len(cloudsql_time))
