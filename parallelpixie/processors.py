@@ -122,7 +122,7 @@ def process_chunk(chunk, x_col, y_col):
     for row in chunk.itertuples(index=False):
         # Append an (x, y) pair to the data_points list by extracting the values
         # at the specified x and y column indices, converting them to integers
-        data_points.append((int(row[x_col]), int(row[y_col])))
+        data_points.append((row[x_col], row[y_col]))
 
     # Return the list of data points for this chunk
     return data_points
@@ -250,6 +250,6 @@ def generate_plot(pixie_source, plot_func, x_index, y_index, plot_kwargs, label_
     SPINNER.stop()
 
     if verbose:
-        print(f"Processing time: #{(time.time() - start_main) / 60} minutes")
+        print(f"Processing time: #{(time.time() - start_main)} seconds")
 
     return (time.time() - start_main) / 60
